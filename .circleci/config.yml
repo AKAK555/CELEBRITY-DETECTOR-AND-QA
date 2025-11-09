@@ -39,10 +39,13 @@ jobs:
       - checkout
       - gcp-cli/install
       - run:
-          name: Install latest kubectl
+          name: Install latest kubectl locally
           command: |
             curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-            install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+            chmod +x kubectl
+            mv kubectl ~/kubectl
+            echo 'export PATH=$HOME:$PATH' >> $BASH_ENV
+            source $BASH_ENV
       - run:
           name: Authenticate with Google Cloud
           command: |
