@@ -20,6 +20,7 @@ jobs:
     steps:
       - checkout
       - gcp-cli/install
+
       - run:
           name: Authenticate with Google Cloud
           command: |
@@ -38,14 +39,34 @@ jobs:
     steps:
       - checkout
       - gcp-cli/install
+
+      - restore_cache:
+          keys:
+            - gke-tools-{{ checksum "package-lock.json" }}
+            - gke-tools-
+
       - run:
-          name: Install latest kubectl locally
+          name: Install kubectl and GKE auth plugin
           command: |
-            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-            chmod +x kubectl
-            mv kubectl ~/kubectl
-            echo 'export PATH=$HOME:$PATH' >> $BASH_ENV
+            if ! command -v kubectl &> /dev/null; then
+              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+              chmod +x kubectl
+              sudo mv kubectl /usr/local/bin/
+            fi
+
+            if ! gcloud components list | grep -q gke-gcloud-auth-plugin; then
+              gcloud components install gke-gcloud-auth-plugin --quiet
+            fi
+
+            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
+            echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> $BASH_ENV
             source $BASH_ENV
+
+      - save_cache:
+          paths:
+            - /usr/local/bin/kubectl
+          key: gke-tools-{{ checksum "package-lock.json" }}
+
       - run:
           name: Authenticate with Google Cloud
           command: |
