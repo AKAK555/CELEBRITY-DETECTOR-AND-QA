@@ -55,9 +55,13 @@ jobs:
             gcloud container clusters get-credentials $GKE_CLUSTER --region $GOOGLE_COMPUTE_REGION --project $GOOGLE_PROJECT_ID
 
       - run:
-          name: Deploy to GKE
+          name: Apply Kubernetes Deployment
           command: |
             kubectl apply -f kubernetes-deployment.yaml --validate=false
+
+      - run:
+          name: Restart Deployment
+          command: |
             kubectl rollout restart deployment/llmops-app
 
 workflows:
