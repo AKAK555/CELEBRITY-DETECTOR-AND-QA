@@ -39,32 +39,47 @@ jobs:
     steps:
       - checkout
       - gcp-cli/install
+
       - run:
-          name: Install kubectl and GKE auth plugin
+          name: Update gcloud, install kubectl and GKE auth plugin
           command: |
+            # Update gcloud to the latest version before installing plugin
+            gcloud components update --quiet
+
+            # Install GKE auth plugin
+            gcloud components install gke-gcloud-auth-plugin --quiet
+
+            # Install kubectl (latest)
             curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
             chmod +x kubectl
             sudo mv kubectl /usr/local/bin/
-            gcloud components install gke-gcloud-auth-plugin --quiet
+
+            # Verify the plugin is installed and detectable
             gke-gcloud-auth-plugin --version
-            gcloud components update
+            kubectl version --client
+
       - run:
           name: Authenticate with Google Cloud
           command: |
             echo "$GCLOUD_SERVICE_KEY" | base64 --decode > gcp-key.json
             gcloud auth activate-service-account --key-file=gcp-key.json
             gcloud auth configure-docker us-central1-docker.pkg.dev || gcloud auth configure-docker
+
       - run:
           name: Configure GKE
           command: |
             gcloud container clusters get-credentials $GKE_CLUSTER --region $GOOGLE_COMPUTE_REGION --project $GOOGLE_PROJECT_ID
+
       - run:
           name: Apply Kubernetes Deployment
           command: |
+            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
             kubectl apply -f kubernetes-deployment.yaml --validate=false
+
       - run:
           name: Restart Deployment
           command: |
+            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
             kubectl rollout restart deployment/llmops-app
 
 workflows:
