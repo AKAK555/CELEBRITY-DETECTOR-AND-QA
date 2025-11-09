@@ -1,5 +1,8 @@
 version: 2.1
 
+orbs:
+  gcp-cli: circleci/gcp-cli@2.2.0
+
 executors:
   machine-executor:
     machine:
@@ -16,6 +19,8 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
+      - gcp-cli/install:
+          components: gcloud
       - run:
           name: Authenticate with Google Cloud
           command: |
@@ -33,6 +38,8 @@ jobs:
     executor: machine-executor
     steps:
       - checkout
+      - gcp-cli/install:
+          components: kubectl
       - run:
           name: Authenticate with Google Cloud
           command: |
