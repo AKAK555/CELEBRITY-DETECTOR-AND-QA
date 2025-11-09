@@ -3,7 +3,7 @@ version: 2.1
 executors:
   machine-executor:
     machine:
-      image: ubuntu-2204:2023.07.1
+      enabled: true
     working_directory: ~/repo
 
 jobs:
