@@ -20,14 +20,12 @@ jobs:
     steps:
       - checkout
       - gcp-cli/install
-
       - run:
           name: Authenticate with Google Cloud
           command: |
             echo "$GCLOUD_SERVICE_KEY" | base64 --decode > gcp-key.json
             gcloud auth activate-service-account --key-file=gcp-key.json
             gcloud auth configure-docker us-central1-docker.pkg.dev || gcloud auth configure-docker
-
       - run:
           name: Build and Push Docker Image
           command: |
@@ -36,54 +34,34 @@ jobs:
 
   deploy_to_gke:
     executor: machine-executor
+    environment:
+      USE_GKE_GCLOUD_AUTH_PLUGIN: "True"
     steps:
       - checkout
       - gcp-cli/install
-
-      - restore_cache:
-          keys:
-            - gke-tools-{{ checksum "package-lock.json" }}
-            - gke-tools-
-
       - run:
           name: Install kubectl and GKE auth plugin
           command: |
-            if ! command -v kubectl &> /dev/null; then
-              curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-              chmod +x kubectl
-              sudo mv kubectl /usr/local/bin/
-            fi
-
-            if ! gcloud components list | grep -q gke-gcloud-auth-plugin; then
-              gcloud components install gke-gcloud-auth-plugin --quiet
-            fi
-
-            export USE_GKE_GCLOUD_AUTH_PLUGIN=True
-            echo 'export USE_GKE_GCLOUD_AUTH_PLUGIN=True' >> $BASH_ENV
-            source $BASH_ENV
-
-      - save_cache:
-          paths:
-            - /usr/local/bin/kubectl
-          key: gke-tools-{{ checksum "package-lock.json" }}
-
+            curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+            chmod +x kubectl
+            sudo mv kubectl /usr/local/bin/
+            gcloud components install gke-gcloud-auth-plugin --quiet
+            gke-gcloud-auth-plugin --version
+            gcloud components update
       - run:
           name: Authenticate with Google Cloud
           command: |
             echo "$GCLOUD_SERVICE_KEY" | base64 --decode > gcp-key.json
             gcloud auth activate-service-account --key-file=gcp-key.json
             gcloud auth configure-docker us-central1-docker.pkg.dev || gcloud auth configure-docker
-
       - run:
           name: Configure GKE
           command: |
             gcloud container clusters get-credentials $GKE_CLUSTER --region $GOOGLE_COMPUTE_REGION --project $GOOGLE_PROJECT_ID
-
       - run:
           name: Apply Kubernetes Deployment
           command: |
             kubectl apply -f kubernetes-deployment.yaml --validate=false
-
       - run:
           name: Restart Deployment
           command: |
